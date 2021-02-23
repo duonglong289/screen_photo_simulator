@@ -68,4 +68,4 @@ def contrast_brightness01(image: np.array, bright=0.0, contrast=1.0):
     return out.clip(0,1)
 
 # Colors (BGR format)
-lightgray = (180,180,180)
+lightgray = (100,100,100)

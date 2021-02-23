@@ -2,6 +2,7 @@ import cv2
 from cv2 import getPerspectiveTransform, warpPerspective
 import numpy as np
 from math import ceil
+import random
 
 def dither(canvas, gap=5, skew=0,
            pattern = 'rgb', contrast=255, color=None, rowwise=True):
@@ -81,7 +82,8 @@ def linear_wave(canvas, gap=5, skew=0, thick=2, rowwise=True,
     H, W, _ = mask_shape
     if color is None:
         color = (contrast,) * 3
-
+        
+    # color = (random.randint(0, 10), random.randint(0, 10), random.randint(0, 10))
     # Generate color map
     num_lines = len(list(range(0,H,gap))) if rowwise else len(list(range(0,W,gap)))
     if pattern=='gaussian':
@@ -119,8 +121,8 @@ def linear_wave(canvas, gap=5, skew=0, thick=2, rowwise=True,
     else:
         mask = mask[:,np.abs(skew):-np.abs(skew)]
 
-    out = (canvas-mask).clip(0,255)     # Clip instead of normalize
-    return np.uint8(out)
+    out = (canvas-mask).clip(0,255).astype(np.uint8)     # Clip instead of normalize
+    return out
 
     ''' # deprecated (normalize output)
     out = cv2.normalize(canvas+mask, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
@@ -176,6 +178,7 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     contrast = 64
     if color is None:
         color = (contrast,) * 3
+        # color = (random.randint(0, 10), random.randint(0, 10), random.randint(0, 10))
 
     # Draw lines onto mask
     if rowwise:

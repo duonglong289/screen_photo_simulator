@@ -1,8 +1,10 @@
 import numpy as np
 from cv2 import getPerspectiveTransform, warpPerspective
-from moire import linear_wave, nonlinear_wave
+from moire import linear_wave, nonlinear_wave, dither
 from image_tools import gamma_correction
 from warp import warp_image
+import matplotlib.pyplot as plt
+import cv2
 
 class RecaptureModule(object):
     '''
@@ -22,20 +24,24 @@ class RecaptureModule(object):
         '''
         :param v_moire: # of vertical moire patterns to insert.
         :type v_moire: int
+
         :param v_type: A sequence of characters 'f'(fixed), 'g'(gaussian), and 's'(sine).
                        Its length may be a factor of 'v_moire' value,
                             in which case the sequence is broadcasted.
         :type v_type: str
+
         :param v_skew: A list of the numbers of pixels to skew for each moire pattern
                             (in this case how much to skew horizontally).
                        Supports broadcasting.
         :type v_skew: list(int)
+
         :param v_cont: A list of the values of pixels to add into the input image
                             (before normalization).
                        Determines the strength of the inserted moire pattern
                             ('gaussian': mean, 'sine': center value).
                        Supports broadcasting.
         :type v_cont: list(int)
+
         :param v_dev: A list of the values of pixels that serve as "deviations"
                             ('gaussian': stddev, 'sine': amplitude).
                       Supports broadcasting.
@@ -43,6 +49,7 @@ class RecaptureModule(object):
 
         :param h_moire: # of horizontal moire patterns to insert.
         :type h_moire: int
+
         :param h_type: A sequence of characters 'f'(fixed), 'g'(gaussian), and 's'(sine).
                        Its length may be a factor of 'h_moire' value,
                             in which case the sequence is broadcasted.
@@ -156,7 +163,7 @@ class RecaptureModule(object):
         assert gamma > 0, "ERROR: gamma value cannot be 0 or sub-zero."
         self._gamma = gamma
 
-    def __call__(self, image, new_src_pt=None, new_dst_pt=None, verbose=False, show_mask=False):
+    def __call__(self, image, new_src_pt=None, new_dst_pt=None, verbose=False, gap=5, show_mask=False):
         '''
         :param image: the input image to transform (HWC format)
         :type image: np.array
@@ -180,21 +187,38 @@ class RecaptureModule(object):
                 in zip([True,False], self._counts, self._mtypes, self._skews, self._contrasts, self._devs):
             for it, mtype, skew, ctr, dev in zip(range(count), mtypes, skews, conts, devs):
                 out = linear_wave(out,
+                                  gap=gap,
                                   rowwise=row,
                                   skew=skew,
                                   pattern=mtype,
                                   contrast=ctr,
                                   dev=dev,
                                   seed=self._seed)
+
                 if verbose:
                     print('(Linear moire call) type: {}, skew: {}, contrast: {}, dev: {}, row: {}'.format(
                             mtype, skew, ctr, dev, row))
+        
+        # cv2.namedWindow(f"{it}", cv2.WINDOW_NORMAL)
+        # cv2.imshow(f"{it}", out)
+        # cv2.waitKey(0)
 
         # Non-linear moire pattern insertion
         if self._nl_moire:
+            import random
+            self._nl_type = random.choice(['fixed', 'gaussian', 'sine'])
             out, nl_mask = nonlinear_wave(out, directions=self._nl_dir, pattern=self._nl_type,
                                  skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
                                  tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
+
+            # out, nl_mask = linear_wave(out, directions=self._nl_dir, pattern=self._nl_type,
+            #                      skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
+            #                      tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
+
+            # out, nl_mask = dither(out, pattern=self._nl_type,
+            #                      skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
+            #                      tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
+
             if verbose:
                 print('(Non-linear moire call) direction: {}, type: {}, skew: {}, contrast: {}, dev: {}, \
                         margins: {}, {}' \
