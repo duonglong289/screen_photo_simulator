@@ -58,12 +58,17 @@ def gen(index):
                                    gamma=gamma, margins=None, seed=random.randint(1, 1000))
 
     canvas = recap_module(image,
+                    gap=gap,
                     new_src_pt = src_pt,
                     verbose=False,
                     show_mask=False)
     
     output_img_path = os.path.join(output_folder, "{}_{}.jpg".format(output_img_name, index))
     cv2.imwrite(output_img_path, canvas)
+    
+    # cv2.namedWindow("", cv2.WINDOW_NORMAL)
+    # cv2.imshow("", canvas)
+    # cv2.waitKey(0)
 
 
 def main():
@@ -81,14 +86,15 @@ def main():
     output_folder = "result_data/{}".format(output_img_name)
     os.makedirs(output_folder, exist_ok=True)
 
-    pool = mp.Pool(8)
-    output = list(tqdm(pool.imap(gen, range(len(dataset))), total=len(dataset)))
-    pool.terminate()
+    # pool = mp.Pool(8)
+    # output = list(tqdm(pool.imap(gen, range(len(dataset))), total=len(dataset)))
+    # pool.terminate()
 
-    # for i in tqdm(range(len(dataset))):
-    #     gen(i)
-    #     if i == 40:
-    #         break
+    for i in tqdm(range(len(dataset))):
+        gen(i)
+        if i == 10:
+            break
+
 
 
 if __name__ == "__main__":

@@ -207,7 +207,7 @@ class RecaptureModule(object):
         if self._nl_moire:
             import random
             self._nl_type = random.choice(['fixed', 'gaussian', 'sine'])
-            out, nl_mask = nonlinear_wave(out, directions=self._nl_dir, pattern=self._nl_type,
+            out, nl_mask = nonlinear_wave(out, gap=gap, directions=self._nl_dir, pattern=self._nl_type,
                                  skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
                                  tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
 

@@ -5,7 +5,7 @@ from math import ceil
 import random
 
 def dither(canvas, gap=5, skew=0,
-           pattern = 'rgb', contrast=255, color=None, rowwise=True):
+           pattern = 'rgb', contrast=125, color=None, rowwise=True):
     mask_shape = list(canvas.shape)
     if rowwise:
         mask_shape[0] += 2 * np.abs(skew)
@@ -175,10 +175,9 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     H, W, _ = mask_shape
 
     # Set color
-    contrast = 64
+    contrast = random.random(20, 80)
     if color is None:
         color = (contrast,) * 3
-        # color = (random.randint(0, 10), random.randint(0, 10), random.randint(0, 10))
 
     # Draw lines onto mask
     if rowwise:
