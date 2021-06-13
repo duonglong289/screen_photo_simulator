@@ -31,7 +31,8 @@ def create_simplex_mask(shape=[100, 100], feature_size=None):
 
 
 aug = iaa.Sequential([
-    iaa.GaussianBlur(sigma=(0.1, 1))
+    # iaa.GaussianBlur(sigma=(0.25, 1))
+    iaa.GaussianBlur(sigma=(1, 1.5))
 ])
 
 
@@ -112,24 +113,22 @@ def create_CFA_image(shape, patterns='RGGB'):
 def gen(index):
     path = dataset[0]
     image = cv2.imread(path)
-    image = cv2.imread('/home/geneous/Downloads/random/MicrosoftTeams-image.png')
-    image = cv2.resize(image, (448, 448))
+    # image = cv2.imread('/home/geneous/Downloads/random/MicrosoftTeams-image.png')
+    # image = cv2.resize(image, (448, 448))
     H, W, _ = image.shape
-    raw_image = image.copy()
-    # image = np.ones(((448,448, 3)), dtype=np.uint8) * 255
-    # dst_H, dst_W = image.shape[:2]
-    dst_H, dst_W = 600, 800
+    # raw_image = image.copy()
+    dst_H, dst_W = image.shape[:2]
+    # dst_H, dst_W = 600, 800
 
     src_pt = np.zeros((4,2), dtype="float32")
     src_pt[0] = [W // 4, H // 4]
     src_pt[1] = [W // 4 * 3, H // 4]
     src_pt[2] = [W // 4 * 3, H // 4 * 3]
     src_pt[3] = [W // 4, H // 4 * 3]
-
     
     # Hyperparameter
-    # gamma = random.uniform(0.4, 1.2)
-    gamma = 1.2
+    gamma = random.uniform(0.9, 1.1)
+    # gamma = 1.2
     if random.random() < 0.8:
         gap_nl = 2
     else:
@@ -139,15 +138,15 @@ def gen(index):
 
     # Vertical parameter
     v_moire = random.randint(1, 2)
-    v_skew = [random.randint(2, 10) for _ in range(v_moire)]
+    v_skew = [random.randint(0, 10) for _ in range(v_moire)]
     v_type = [random.choice(['f', 'g', 's']) for _ in range(v_moire)]
-    v_cont = [random.randint(1, 15) for _ in range(v_moire)]
+    v_cont = [random.randint(1, 12) for _ in range(v_moire)]
     v_dev = [random.randint(1, 2) for _ in range(v_moire)]
     # Horizontal parameter
     h_moire= random.randint(1, 2)
-    h_skew = [random.randint(2, 10) for _ in range(h_moire)]
+    h_skew = [random.randint(0, 10) for _ in range(h_moire)]
     h_type = [random.choice(['f', 'g', 's']) for _ in range(h_moire)]
-    h_cont = [random.randint(1, 15) for _ in range(h_moire)]
+    h_cont = [random.randint(1, 12) for _ in range(h_moire)]
     h_dev = [random.randint(1, 2) for _ in range(h_moire)]
     # Non-linear parameter
     nl_moire = True
@@ -223,21 +222,22 @@ def gen(index):
     # CFA_img[:,:,1] = CFA_img[:,:,1] * mask_bin
     # CFA_img[:,:,2] = CFA_img[:,:,2] * mask_bin
 
-    merge = cv2.addWeighted(canvas, 1, CFA_img, 0.6, 0)
+    ratio_CFA = random.uniform(0.5, 0.8)
+    merge = cv2.addWeighted(canvas, 1, CFA_img, ratio_CFA, 0)
     # Merge full image
-    ratio_merge = random.uniform(0.7, 1.2)
+    ratio_merge = random.uniform(0.5, 1)
     merge = cv2.addWeighted(canvas, 0.5, merge, ratio_merge, 0)
     merge = aug.augment_image(merge)
 
     # Merge part of image
     # TODO
 
-    output_img_path = os.path.join(output_folder, "{}_color_{}.jpg".format(output_img_name, index))
-    cv2.imwrite(output_img_path, merge)
+    # output_img_path = os.path.join(output_folder, "{}_color_{}.jpg".format(output_img_name, index))
+    # cv2.imwrite(output_img_path, merge)
 
-    if random.random() < 0.1:
-        output_img_path_gray = os.path.join(output_folder, "{}_gray_{}.jpg".format(output_img_name, index))
-        cv2.imwrite(output_img_path_gray, canvas_nl)
+    # if random.random() < 0.2:
+    #     output_img_path_gray = os.path.join(output_folder, "{}_gray_{}.jpg".format(output_img_name, index))
+    #     cv2.imwrite(output_img_path_gray, canvas_nl)
 
     return canvas, canvas_nl, merge
 
@@ -260,26 +260,25 @@ def main():
     global simplex
     simplex = OpenSimplex()
 
-    pool = mp.Pool(8)
-    output = list(tqdm(pool.imap(gen, range(len(dataset))), total=len(dataset)))
-    pool.terminate()
+    # pool = mp.Pool(8)
+    # output = list(tqdm(pool.imap(gen, range(len(dataset))), total=len(dataset)))
+    # pool.terminate()
 
-    # for i in tqdm(range(len(dataset))):
-    #     canvas, nl_canvas, best_result = gen(i)
+    for i in tqdm(range(len(dataset))):
+        canvas, nl_canvas, best_result = gen(i)
 
-        # cv2.namedWindow("canvas", cv2.WINDOW_NORMAL)
-        # cv2.imshow("canvas", canvas)
+        cv2.namedWindow("canvas", cv2.WINDOW_NORMAL)
+        cv2.imshow("canvas", canvas)
 
-        # cv2.namedWindow("nl_canvas", cv2.WINDOW_NORMAL)
-        # cv2.imshow("nl_canvas", nl_canvas)
+        cv2.namedWindow("nl_canvas", cv2.WINDOW_NORMAL)
+        cv2.imshow("nl_canvas", nl_canvas)
 
-        # cv2.namedWindow("merge", cv2.WINDOW_NORMAL)
-        # cv2.imshow("merge", best_result)
+        cv2.namedWindow("merge", cv2.WINDOW_NORMAL)
+        cv2.imshow("merge", best_result)
         
-
-        # key = cv2.waitKey(0)
-        # if key == 27:
-        #     break
+        key = cv2.waitKey(0)
+        if key == 27:
+            break
 
 if __name__ == "__main__":
     main()

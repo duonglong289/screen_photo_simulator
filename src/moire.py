@@ -74,6 +74,7 @@ def linear_wave(canvas, gap=5, skew=0, thick=3, rowwise=True,
     :param dev: deviation (stddev for 'gaussian', amplitude for 'sine')
     :type dev: float
     '''
+    thick = random.randint(1, 3)
     mask_shape = list(canvas.shape)
     if rowwise:
         mask_shape[0] += 2 * np.abs(skew)
@@ -87,7 +88,7 @@ def linear_wave(canvas, gap=5, skew=0, thick=3, rowwise=True,
     # color = (random.randint(0, 10), random.randint(0, 10), random.randint(0, 10))
     # Generate color map
     num_lines = len(list(range(0,H,gap))) if rowwise else len(list(range(0,W,gap)))
-    if pattern=='gaussian':
+    if pattern == 'gaussian':
         if seed:
             np.random.seed(seed)
         color_map = [[int(round(np.clip(np.random.randn() * dev + mean, \
@@ -146,6 +147,7 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     :param dev: deviation (stddev for 'gaussian', amplitude for 'sine')
     :type dev: float
     '''
+    thick = random.randint(1,2)
     # Initialize the shape of the mask
     mask_shape = list(canvas.shape)
 
@@ -178,12 +180,13 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     H, W, _ = mask_shape
 
     # Set color
-    contrast = random.randint(20, 80)
+    contrast = random.randint(30, 127)
     if color is None:
         color = (contrast,) * 3
     
-    # color = (random.randint(20, 100), random.randint(20, 100), random.randint(20, 100))
-    # color = (255, 255, 255)
+    # color = (random.randint(50, 100), random.randint(50, 100), random.randint(50, 100))
+    if random.random() < 0.35:
+        color = (255, 255, 255)
 
     # Draw lines onto mask
     if rowwise:

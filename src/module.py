@@ -193,9 +193,8 @@ class RecaptureModule(object):
         # Linear moire pattern insertion
         for row, count, mtypes, skews, conts, devs in zip([True, False], self._counts, self._mtypes, self._skews, self._contrasts, self._devs):
             for it, mtype, skew, ctr, dev in zip(range(count), mtypes, skews, conts, devs):
-                gap=5
                 out, linear_mask = linear_wave(out,
-                                  gap=gap,
+                                  gap=gap_linear,
                                   rowwise=row,
                                   skew=skew,
                                   pattern=mtype,
@@ -206,12 +205,12 @@ class RecaptureModule(object):
                 if verbose:
                     print('(Linear moire call) type: {}, skew: {}, contrast: {}, dev: {}, row: {}'.format(
                             mtype, skew, ctr, dev, row))
-        gap=2
+    
         mosaic_input = out.copy()
         # Non-linear moire pattern insertion
         if self._nl_moire:
             self.nl_skew = 0
-            out, nl_mask = nonlinear_wave(out, gap=gap, directions=self._nl_dir, pattern=self._nl_type,
+            out, nl_mask = nonlinear_wave(out, gap=gap_nl, directions=self._nl_dir, pattern=self._nl_type,
                                  skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
                                  tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
 
