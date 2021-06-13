@@ -1,9 +1,11 @@
+from imgaug.augmenters import color
 import numpy as np
 from cv2 import getPerspectiveTransform, warpPerspective
 from moire import linear_wave, nonlinear_wave, dither
 from image_tools import gamma_correction
 from warp import warp_image
 import matplotlib.pyplot as plt
+import random
 import cv2
 
 class RecaptureModule(object):
@@ -18,58 +20,62 @@ class RecaptureModule(object):
     def __init__(self, dst_H=-1, dst_W=-1,
                  v_moire=0, v_type=None, v_skew=None, v_cont=None, v_dev=None,
                  h_moire=0, h_type=None, h_skew=None, h_cont=None, h_dev=None,
-                 nl_moire=False, nl_dir=None, nl_type=None, nl_skew=None, nl_cont=None, nl_dev=None,
+                 nl_moire=True, nl_dir=None, nl_type=None, nl_skew=None, nl_cont=None, nl_dev=None,
                  nl_tb=None, nl_lr=None,
                  gamma=1, points=None, margins=None, seed=None):
         '''
         :param v_moire: # of vertical moire patterns to insert.
-        :type v_moire: int
+            --type v_moire: int
 
         :param v_type: A sequence of characters 'f'(fixed), 'g'(gaussian), and 's'(sine).
                        Its length may be a factor of 'v_moire' value,
                             in which case the sequence is broadcasted.
-        :type v_type: str
+            --type v_type: str
 
         :param v_skew: A list of the numbers of pixels to skew for each moire pattern
                             (in this case how much to skew horizontally).
                        Supports broadcasting.
-        :type v_skew: list(int)
+            --type v_skew: list(int)
 
         :param v_cont: A list of the values of pixels to add into the input image
                             (before normalization).
                        Determines the strength of the inserted moire pattern
                             ('gaussian': mean, 'sine': center value).
                        Supports broadcasting.
-        :type v_cont: list(int)
+            --type v_cont: list(int)
 
         :param v_dev: A list of the values of pixels that serve as "deviations"
                             ('gaussian': stddev, 'sine': amplitude).
                       Supports broadcasting.
-        :type v_dev: list(int)
+            --type v_dev: list(int)
 
         :param h_moire: # of horizontal moire patterns to insert.
-        :type h_moire: int
+            --type h_moire: int
 
         :param h_type: A sequence of characters 'f'(fixed), 'g'(gaussian), and 's'(sine).
                        Its length may be a factor of 'h_moire' value,
                             in which case the sequence is broadcasted.
-        :type h_type: str
+            --type h_type: str
+        
         :param h_skew: A list of the numbers of pixels to skew for each moire pattern
                             (in this case how much to skew horizontally).
                        Also supports broadcasting.
-        :type h_skew: list(int)
+            --type h_skew: list(int)
+
         :param h_cont: A list of the values of pixels to add into the input image
                             (before normalization).
                        Determines the strength of the inserted moire pattern
                             ('gaussian': mean, 'sine': center value).
                        Supports broadcasting.
-        :type h_cont: list(int)
+            --type h_cont: list(int)
+
         :param h_dev: A list of the values of pixels that serve as "deviations"
                             ('gaussian': stddev, 'sine': amplitude).
                       Supports broadcasting.
-        :type h_dev: list(int)
+            --type h_dev: list(int)
+        
         :param gamma: gamma value for gamma correction (no correction when gamma == 1).
-        :type gamma: float
+            --type gamma: float
 
         e.g.)
             recap_module = RecaptureModule(v_moire=2, v_type='sg', v_skew=[20, 80], v_cont=10, v_dev=3,
@@ -94,6 +100,7 @@ class RecaptureModule(object):
             if count > 0:
                 if mtype is None or (len(mtype) != count and count % len(mtype) != 0):
                     raise ValueError("Please check the number of your moire type parameters.")
+
                 if len(mtype) != count:
                     mtype *= count // len(mtype)
 
@@ -116,6 +123,7 @@ class RecaptureModule(object):
                                         either an 'int' or a 'list'.")
                 if len(ctr) != count:
                     ctr *= count // len(ctr)
+                
 
                 if dev is None or (type(dev) is list and len(dev) != count and count % len(dev) != 0):
                     raise ValueError("Please check the number of your contrast parameters.")
@@ -163,7 +171,7 @@ class RecaptureModule(object):
         assert gamma > 0, "ERROR: gamma value cannot be 0 or sub-zero."
         self._gamma = gamma
 
-    def __call__(self, image, new_src_pt=None, new_dst_pt=None, verbose=False, gap=5, show_mask=False):
+    def __call__(self, image, new_src_pt=None, new_dst_pt=None, verbose=False, gap_nl=2, gap_linear=5, show_mask=False):
         '''
         :param image: the input image to transform (HWC format)
         :type image: np.array
@@ -183,10 +191,10 @@ class RecaptureModule(object):
                 print('(Gamma correction call) gamma: {}'.format(self._gamma))
 
         # Linear moire pattern insertion
-        for row, count, mtypes, skews, conts, devs \
-                in zip([True,False], self._counts, self._mtypes, self._skews, self._contrasts, self._devs):
+        for row, count, mtypes, skews, conts, devs in zip([True, False], self._counts, self._mtypes, self._skews, self._contrasts, self._devs):
             for it, mtype, skew, ctr, dev in zip(range(count), mtypes, skews, conts, devs):
-                out = linear_wave(out,
+                gap=5
+                out, linear_mask = linear_wave(out,
                                   gap=gap,
                                   rowwise=row,
                                   skew=skew,
@@ -198,26 +206,19 @@ class RecaptureModule(object):
                 if verbose:
                     print('(Linear moire call) type: {}, skew: {}, contrast: {}, dev: {}, row: {}'.format(
                             mtype, skew, ctr, dev, row))
-        
-        # cv2.namedWindow(f"{it}", cv2.WINDOW_NORMAL)
-        # cv2.imshow(f"{it}", out)
-        # cv2.waitKey(0)
-
+        gap=2
+        mosaic_input = out.copy()
         # Non-linear moire pattern insertion
         if self._nl_moire:
-            import random
-            self._nl_type = random.choice(['fixed', 'gaussian', 'sine'])
+            self.nl_skew = 0
             out, nl_mask = nonlinear_wave(out, gap=gap, directions=self._nl_dir, pattern=self._nl_type,
                                  skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
                                  tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
 
-            # out, nl_mask = linear_wave(out, directions=self._nl_dir, pattern=self._nl_type,
-            #                      skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
-            #                      tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
+            # out, nl_mask = linear_wave(out, pattern=self._nl_type, skew=self._nl_skew, 
+            #                      contrast=self._nl_cont, dev=self._nl_dev,seed=self._seed)
 
-            # out, nl_mask = dither(out, pattern=self._nl_type,
-            #                      skew=self._nl_skew, contrast=self._nl_cont, dev=self._nl_dev,
-            #                      tb_margins=self._nl_tb, lr_margins=self._nl_lr, seed=self._seed)
+            # out, nl_mask = dither(out, contrast=self._nl_cont)
 
             if verbose:
                 print('(Non-linear moire call) direction: {}, type: {}, skew: {}, contrast: {}, dev: {}, \
@@ -264,10 +265,7 @@ class RecaptureModule(object):
             M = getPerspectiveTransform(src_points, dst_points)
             out = warpPerspective(out, M, (dst_W, dst_H))
 
-        if self._nl_moire and show_mask:
-            return out, nl_mask
-        else:
-            return out
+        return mosaic_input, out, nl_mask
 
     @property
     def gamma(self):

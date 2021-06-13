@@ -8,3 +8,5 @@ __pycache__
 *.JPEG
 *.jpeg
 data/icl_dragotti
+
+.vscode

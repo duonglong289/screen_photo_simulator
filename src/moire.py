@@ -13,10 +13,11 @@ def dither(canvas, gap=5, skew=0,
         mask_shape[1] += 2 * np.abs(skew)
     mask = np.zeros(mask_shape)
     H, W, _ = mask_shape
+    print(mask_shape)
 
     if color is None:
         color = (contrast,) * 3
-
+    pattern = 'single'
     if rowwise:
         cols = np.linspace(0,W,W//gap)
         for top_row in range(0,H,gap):
@@ -51,16 +52,16 @@ def dither(canvas, gap=5, skew=0,
                     cv2.circle(mask,(col,row),0,color)
                 else:
                     raise NotImplementedError()
-
-    if rowwise:
-        mask = mask[np.abs(skew):-np.abs(skew)]
-    else:
-        mask = mask[:,np.abs(skew):-np.abs(skew)]
+    # if rowwise:
+    #     mask = mask[np.abs(skew):-np.abs(skew), :]
+    #     print(mask.shape)
+    # else:
+    #     mask = mask[:,np.abs(skew):-np.abs(skew)]
 
     out = cv2.normalize(canvas+mask, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-    return np.uint8(out * 255)
+    return np.uint8(out * 255), np.uint8(mask)*255
 
-def linear_wave(canvas, gap=5, skew=0, thick=2, rowwise=True,
+def linear_wave(canvas, gap=5, skew=0, thick=3, rowwise=True,
                 pattern='fixed', contrast=1, color=None, dev=1, seed=None):
     '''
     :param pattern: Pattern for the noise to add to each line \
@@ -117,12 +118,14 @@ def linear_wave(canvas, gap=5, skew=0, thick=2, rowwise=True,
             else:
                 cv2.line(mask,(col-skew,0),(col,H),color,thickness=thick)
     if rowwise:
-        mask = mask[np.abs(skew):-np.abs(skew)]
+        if skew != 0:
+            mask = mask[np.abs(skew):-np.abs(skew)]
     else:
-        mask = mask[:,np.abs(skew):-np.abs(skew)]
+        if skew != 0:
+            mask = mask[:,np.abs(skew):-np.abs(skew)]
 
     out = (canvas-mask).clip(0,255).astype(np.uint8)     # Clip instead of normalize
-    return out
+    return out, np.uint8(mask)
 
     ''' # deprecated (normalize output)
     out = cv2.normalize(canvas+mask, dst=None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
@@ -165,7 +168,7 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
         colwise = True
     else:
         raise ValueError("Please provide a valid argument for 'directions' parameter, among {'b','h','v'}.")
-
+    
     # Leave additional space for full skewing
     if rowwise:
         mask_shape[0] += 2 * np.abs(skew)
@@ -175,9 +178,12 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     H, W, _ = mask_shape
 
     # Set color
-    contrast = random.random(20, 80)
+    contrast = random.randint(20, 80)
     if color is None:
         color = (contrast,) * 3
+    
+    # color = (random.randint(20, 100), random.randint(20, 100), random.randint(20, 100))
+    # color = (255, 255, 255)
 
     # Draw lines onto mask
     if rowwise:
@@ -270,10 +276,10 @@ def nonlinear_wave(canvas, gap=4, skew=0, thick=1, directions='b',
     M = cv2.getPerspectiveTransform(src_points, dst_points)
     warped_mask = cv2.warpPerspective(mask, M, (W, H))
 
-    original_mask = warped_mask.copy()
-
+    original_mask = warped_mask.copy()    
     ### Remove (potential) black regions by removing the margins
     warped_mask = warped_mask[tb_extra:-tb_extra, lr_extra:-lr_extra]
 
     out = (canvas + warped_mask).clip(0,255)
-    return np.uint8(out), np.uint8(original_mask)
+
+    return np.uint8(out), np.uint8(warped_mask)
